@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>藥局班表系統-備註全顯示版</title>
+    <title>藥局班表系統</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; background: #f4f7f6; }
@@ -10,7 +10,7 @@
         table { border-collapse: collapse; width: 100%; table-layout: fixed; background: white; }
         th, td { border: 1px solid #000; text-align: center; vertical-align: middle; padding: 4px; font-size: 13px; height: 35px; }
         .header-row { background-color: #333; color: white; font-weight: bold; }
-        .date-row { background-color: #e3f2fd; font-weight: bold; }
+        .date-row { background-color: #e3f2fd; font-weight: bold; font-size: 14px; }
         .shift-label { background-color: #f5f5f5; font-weight: bold; width: 70px; }
         .sat-cell { background-color: #fff9c4 !important; }
         .sun-cell { background-color: #ffcdd2 !important; }
@@ -26,7 +26,7 @@
 <body>
 
 <div class="config-card">
-    <h2>班表參數設定</h2>
+    <h2>班表參數設定 (合併日期版)</h2>
     <div>
         <strong>年月選擇：</strong>
         <input type="number" id="year" value="2026" style="width: 60px;" onchange="updateSatInputs()"> 年 
@@ -49,7 +49,6 @@
         <strong>2. 週末「班」文字固定顯示：</strong><br>
         週六顯示：<input type="text" id="fixed-sat-note" value="支援" style="width:80px"> 
         週日顯示：<input type="text" id="fixed-sun-note" value="全天" style="width:80px">
-        <small style="color: #444; display: block; margin-top: 5px;">(不論是否有排人，週末該格位皆會顯示此文字)</small>
     </div>
 
     <hr>
@@ -120,28 +119,32 @@
 
         const numStaff = staffList.length;
         if(numStaff === 0) return;
-        const middleIdx = Math.floor((numStaff - 1) / 2);
+
         const daysInMonth = new Date(year, month, 0).getDate();
         let startDay = new Date(year, month - 1, 1).getDay(); if (startDay === 0) startDay = 7;
 
         let output = document.getElementById('schedule-output');
         let html = `<table id="full-schedule">`;
+        
+        // 星期列 (使用 colspan)
         html += `<tr class="header-row"><td class="shift-label">星期</td>`;
+        const weekNames = ['一','二','三','四','五','六','日'];
         for(let i=0; i<7; i++){
-            const weekNames = ['一','二','三','四','五','六','日'];
-            for(let s=0; s<numStaff; s++) html += `<td>${s === middleIdx ? weekNames[i] : ''}</td>`;
+            html += `<td colspan="${numStaff}">${weekNames[i]}</td>`;
         }
         html += `</tr>`;
 
         let currentDay = 1;
         while (currentDay <= daysInMonth) {
+            // 日期列 (使用 colspan)
             html += `<tr class="date-row"><td class="shift-label">日期</td>`;
             let weekDays = [];
             for (let i = 1; i <= 7; i++) {
                 let d = currentDay + (i - (currentDay === 1 ? startDay : 1));
                 let isCurrentMonth = (d > 0 && d <= daysInMonth);
                 let cellClass = (i === 6) ? "sat-cell" : (i === 7) ? "sun-cell" : "";
-                for(let s=0; s<numStaff; s++) html += `<td class="${cellClass}">${(isCurrentMonth && s === middleIdx) ? d : ""}</td>`;
+                
+                html += `<td colspan="${numStaff}" class="${cellClass}">${isCurrentMonth ? d : ""}</td>`;
                 weekDays.push(isCurrentMonth ? {d, dayIdx: i} : null);
             }
             html += `</tr>`;
@@ -156,14 +159,11 @@
                         let content = "";
                         if (dayInfo) {
                             const isExcl = excludes.includes(`${dayInfo.d}-${staff.name}`);
-                            // 「班」這列即使被排除(休假)，可能也需要顯示備註？
-                            // 這裡設定：如果是「班」且沒有被排除，就顯示文字
                             if (shift.k === 'note') {
-                                if (dayIdx === 6) content = satFix;      // 週六固定顯示
-                                else if (dayIdx === 7) content = sunFix; // 週日固定顯示
-                                else content = staff.note;               // 平日固定顯示
+                                if (dayIdx === 6) content = satFix;
+                                else if (dayIdx === 7) content = sunFix;
+                                else content = staff.note;
                             } else {
-                                // 名字顯示邏輯 (受休假排除影響)
                                 if (!isExcl) {
                                     if (dayIdx === 6) { 
                                         if (staff.name === satAssignment[dayInfo.d] && shift.k === 'm') content = staff.name;
