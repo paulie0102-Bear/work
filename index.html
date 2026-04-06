@@ -17,7 +17,6 @@
         .btn { padding: 10px 20px; cursor: pointer; border-radius: 4px; border: none; margin-right: 10px; font-weight: bold; }
         .btn-blue { background: #1976d2; color: white; }
         .btn-green { background: #28a745; color: white; }
-        .btn-orange { background: #ff9800; color: white; } /* 複製按鈕顏色 */
         .staff-row { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; align-items: center; gap: 10px; }
         .sat-assign-box { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
         .sat-item { background: #fffde7; padding: 8px; border-radius: 4px; border: 1px solid #fbc02d; font-size: 14px; }
@@ -61,16 +60,14 @@
     <input type="text" id="exclude-input" style="width: 90%; margin-top:5px;" placeholder="例如：3-a, 5-b" oninput="renderSchedule()">
     
     <div style="margin-top: 20px;">
-        <button class="btn btn-blue" onclick="renderSchedule()">1. 生成預覽</button>
-        <button class="btn btn-orange" onclick="copyTable()">2. 複製表格內容</button>
-        <button class="btn btn-green" onclick="exportExcel()">3. 匯出 Excel</button>
+        <button class="btn btn-blue" onclick="renderSchedule()">生成預覽</button>
+        <button class="btn btn-green" onclick="exportExcel()">匯出 Excel</button>
     </div>
 </div>
 
 <div id="schedule-output"></div>
 
 <script>
-    // 自動更新週六指派
     function updateSatInputs() {
         const year = parseInt(document.getElementById('year').value);
         const month = parseInt(document.getElementById('month').value);
@@ -104,34 +101,6 @@
         document.getElementById('staff-settings').appendChild(div);
     }
 
-    // 核心複製功能
-    async function copyTable() {
-        const table = document.getElementById("full-schedule");
-        if (!table) {
-            alert("請先生成預覽後再進行複製");
-            return;
-        }
-
-        try {
-            // 將表格轉為 HTML 字串
-            const tableHtml = table.outerHTML;
-            // 建立 ClipboardItem，支援 HTML 格式以保留合併儲存格
-            const blobHtml = new Blob([tableHtml], { type: "text/html" });
-            const blobText = new Blob([table.innerText], { type: "text/plain" });
-            
-            const data = [new ClipboardItem({ 
-                "text/html": blobHtml,
-                "text/plain": blobText 
-            })];
-
-            await navigator.clipboard.write(data);
-            alert("表格已成功複製！現在可以去貼上(Ctrl+V)到您的 Excel 了。");
-        } catch (err) {
-            console.error("複製失敗:", err);
-            alert("複製失敗，請手動全選預覽表格進行複製。");
-        }
-    }
-
     function renderSchedule() {
         const year = parseInt(document.getElementById('year').value);
         const month = parseInt(document.getElementById('month').value);
@@ -157,7 +126,7 @@
         let output = document.getElementById('schedule-output');
         let html = `<table id="full-schedule">`;
         
-        // 星期列
+        // 星期列 (使用 colspan)
         html += `<tr class="header-row"><td class="shift-label">星期</td>`;
         const weekNames = ['一','二','三','四','五','六','日'];
         for(let i=0; i<7; i++){
@@ -167,13 +136,14 @@
 
         let currentDay = 1;
         while (currentDay <= daysInMonth) {
-            // 日期列
+            // 日期列 (使用 colspan)
             html += `<tr class="date-row"><td class="shift-label">日期</td>`;
             let weekDays = [];
             for (let i = 1; i <= 7; i++) {
                 let d = currentDay + (i - (currentDay === 1 ? startDay : 1));
                 let isCurrentMonth = (d > 0 && d <= daysInMonth);
                 let cellClass = (i === 6) ? "sat-cell" : (i === 7) ? "sun-cell" : "";
+                
                 html += `<td colspan="${numStaff}" class="${cellClass}">${isCurrentMonth ? d : ""}</td>`;
                 weekDays.push(isCurrentMonth ? {d, dayIdx: i} : null);
             }
@@ -216,7 +186,6 @@
 
     function exportExcel() {
         const table = document.getElementById("full-schedule");
-        if (!table) { alert("請先生成預覽"); return; }
         const wb = XLSX.utils.table_to_book(table);
         XLSX.writeFile(wb, `${document.getElementById('year').value}年${document.getElementById('month').value}月藥局班表.xlsx`);
     }
